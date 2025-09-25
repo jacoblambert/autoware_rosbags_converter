@@ -151,7 +151,7 @@ class ConvertAutowareRosbags:
             total_messages = self._sum_message_counts(allowed)
             progress = self._build_progress()
             with progress:
-                task = progress.add_task("Converting to MCAP", total=total_messages)
+                task = progress.add_task("[blue]Converting to MCAP", total=total_messages)
                 for connection, timestamp, rawdata in reader.messages(connections=allowed):
                     writer.write(conn_map[connection.id], timestamp, rawdata)
                     progress.advance(task)
@@ -176,7 +176,7 @@ class ConvertAutowareRosbags:
             total_messages = self._sum_message_counts(allowed)
             progress = self._build_progress()
             with progress:
-                task = progress.add_task("Converting to rosbag2", total=total_messages)
+                task = progress.add_task("[blue]Converting to rosbag2", total=total_messages)
                 for connection, timestamp, rawdata in reader.messages(connections=allowed):
                     writer.write(conn_map[connection.id], timestamp, rawdata)
                     progress.advance(task)

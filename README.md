@@ -1,15 +1,13 @@
 # autoware_rosbags_converter
 
-Tools for converting Autoware rosbag2 directories (.db3) to MCAP and back, and for maintaining the ROS message definitions needed by `rosbags`.
+Tools for converting Autoware rosbag2 directories (.db3) to MCAP and back, and for maintaining the custom ROS message definitions needed by `rosbags`.
 
 ## Installation
 
 ### pipx
 
 ```bash
-pipx install .                     # from a local checkout
-# or, from git (replace URL with your fork)
-pipx install "git+https://github.com/<org>/autoware_mcap_db3_converter.git"
+pipx install autoware_rosbags_converter
 ```
 
 Update an existing pipx install with:
@@ -44,30 +42,26 @@ convert-autoware-bag /path/to/bag_mcap --output /path/to/converted_db3
 - If message definitions are missing, the CLI displays the affected topics before proceeding.
 - Pass `--force` to continue without confirmation.
 - Supply `--manifest` to point at a custom `manifest.json` (defaults to the packaged definitions).
-- When metadata is incomplete, you may be prompted to run `ros2 bag reindex`.
+- If metadata is missing or incomplete, you may be prompted to run `ros2 bag reindex`.
 
 ## Generating additional message definitions
 
-The repository ships with curated definitions under `src/autoware_rosbags_converter/msg_definitions`. To add or refresh messages:
+The repository ships with custom definitions under `src/autoware_rosbags_converter/msg_definitions`. To add or refresh messages:
 
 1. Drop the desired ROS packages (or symbolic links to them) under `msg_definitions_src/`.
 2. Run the generator:
    ```bash
-   generate-msg-definitions --validate
+   python3 generate_msg_definitions.py --validate
    ```
 3. Use `--packages <pkg_dir ...>` to restrict generation to specific packages.
 4. The script copies `.msg` files into `src/autoware_rosbags_converter/msg_definitions/` and rewrites `manifest.json`. Validation ensures every definition can be loaded into the Humble typestore and reports dependencies that are still missing.
 
-Commit the updated `.msg` files and `manifest.json` when you are satisfied.
+## Requesting new or updated messages
 
-## Requesting new or updated message support
-
-If you encounter missing message types during conversion:
+If you encounter missing message types during conversion or if some message definitions need to be update updated:
 
 - Capture the missing type list printed by `convert-autoware-bag` (or re-run with `--force` to reproduce the table).
 - Open an issue or pull request and include:
-  - The message type names and packages that are absent.
+  - The message type names and packages that are absent
   - A short description of the Autoware workflow that needs them (and, when possible, a minimal bag demonstrating the topics).
-  - Any upstream package sources that contain the `.msg` files (tarball link, vcs URL, etc.).
-
-Providing that information lets maintainers add the definitions or guide you through generating them yourself.
+  - An upstream package sources that contain the `.msg` files
