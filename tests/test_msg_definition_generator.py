@@ -32,7 +32,7 @@ def write_pkg(
 def test_generator_copies_msg_files(tmp_path):
     source_root = tmp_path / "src"
     output_root = tmp_path / "out"
-    write_pkg(
+    pkg_root = write_pkg(
         source_root,
         package="example_msgs",
         files={
@@ -47,14 +47,14 @@ def test_generator_copies_msg_files(tmp_path):
     )
 
     generator = MsgDefinitionGenerator(output_root=output_root)
-    msg_dir = source_root / "example_msgs" / "msg"
-    results = generator.generate_from_msg_dir("example_msgs", msg_dir)
+    msg_dir = pkg_root / "msg"
+    results = generator.generate_from_msg_dir("example_msgs", pkg_root, msg_dir)
 
     assert len(results) == 2
     ros_types = {artifact.ros_type for artifact in results}
     assert ros_types == {
         "example_msgs/msg/Example",
-        "example_msgs/msg/nested/Inner",
+        "example_msgs/msg/Inner",
     }
 
     generated_path = output_root / "example_msgs" / "Example.msg"
@@ -68,7 +68,7 @@ def test_generator_copies_msg_files(tmp_path):
     manifest = build_manifest(results, output_root=output_root)
     assert manifest == {
         "example_msgs/msg/Example": "example_msgs/Example.msg",
-        "example_msgs/msg/nested/Inner": "example_msgs/nested/Inner.msg",
+        "example_msgs/msg/Inner": "example_msgs/nested/Inner.msg",
     }
 
 
@@ -77,7 +77,7 @@ def test_cli_writes_relative_manifest(tmp_path, monkeypatch):
     output_root = tmp_path / "out"
     manifest_path = output_root / "manifest.json"
 
-    write_pkg(
+    pkg_root = write_pkg(
         source_root,
         package="example_msgs",
         files={"msg/Example.msg": "string name"},
@@ -98,3 +98,33 @@ def test_cli_writes_relative_manifest(tmp_path, monkeypatch):
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert manifest == {"example_msgs/msg/Example": "example_msgs/Example.msg"}
+
+
+def test_generate_from_nested_package_structure(tmp_path):
+    source_root = tmp_path / "src"
+    output_root = tmp_path / "out"
+
+    pkg_root = write_pkg(
+        source_root,
+        package="complex_msgs",
+        files={
+            "vehicle/msg/State.msg": "int32 value",
+            "vehicle/msg/sub/Inner.msg": "bool flag",
+        },
+    )
+
+    generator = MsgDefinitionGenerator(output_root=output_root)
+    msg_dir = pkg_root / "vehicle" / "msg"
+    results = generator.generate_from_msg_dir("complex_msgs", pkg_root, msg_dir)
+
+    output_files = sorted(artifact.output_path.relative_to(output_root).as_posix() for artifact in results)
+    assert output_files == [
+        "complex_msgs/vehicle/State.msg",
+        "complex_msgs/vehicle/sub/Inner.msg",
+    ]
+
+    manifest = build_manifest(results, output_root=output_root)
+    assert manifest == {
+        "complex_msgs/msg/State": "complex_msgs/vehicle/State.msg",
+        "complex_msgs/msg/Inner": "complex_msgs/vehicle/sub/Inner.msg",
+    }

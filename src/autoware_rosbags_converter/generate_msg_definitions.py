@@ -23,7 +23,7 @@ def main() -> None:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("src/autoware_rosbags_converter"),
+        default=Path("src/autoware_rosbags_converter/msg_definitions"),
         help="Directory to write copied ROS msg files.",
     )
     parser.add_argument(
@@ -31,12 +31,6 @@ def main() -> None:
         type=str,
         nargs="*",
         help="Optional list of package directories to process (relative to source root).",
-    )
-    parser.add_argument(
-        "--manifest",
-        type=Path,
-        default=Path("src/autoware_rosbags_converter/manifest.json"),
-        help="Path to write generation manifest metadata.",
     )
     parser.add_argument(
         "--validate",
@@ -47,7 +41,7 @@ def main() -> None:
 
     source_root: Path = args.source_root.resolve()
     output_root: Path = args.output_root.resolve()
-    manifest_path: Path = args.manifest.resolve()
+    manifest_path: Path = output_root / "manifest.json"
 
     entries = _discover_msg_directories(source_root, args.packages)
     if not entries:
@@ -83,10 +77,7 @@ def entrypoint() -> None:  # pragma: no cover - thin wrapper for UV console scri
         raise SystemExit(1) from exc
 
 
-def _discover_msg_directories(
-    source_root: Path,
-    filters: List[str] | None,
-) -> List[Tuple[str, Path]]:
+def _discover_msg_directories(source_root: Path, filters: List[str] | None) -> List[Tuple[str, Path, Path]]:
     search_roots: Iterable[Path]
     if filters:
         search_roots = [source_root.joinpath(item).resolve() for item in filters]
@@ -94,7 +85,7 @@ def _discover_msg_directories(
         search_roots = [source_root]
 
     seen: set[Tuple[str, Path]] = set()
-    results: List[Tuple[str, Path]] = []
+    results: List[Tuple[str, Path, Path]] = []
     for root in search_roots:
         if not root.exists():
             continue
@@ -107,12 +98,12 @@ def _discover_msg_directories(
             package_name = _read_package_name(package_root / "package.xml")
             if not package_name:
                 continue
-            entry = (package_name, msg_dir.resolve())
-            if entry in seen:
+            entry_key = (package_name, msg_dir.resolve())
+            if entry_key in seen:
                 continue
-            seen.add(entry)
-            results.append(entry)
-    results.sort(key=lambda item: (item[0], str(item[1])))
+            seen.add(entry_key)
+            results.append((package_name, package_root.resolve(), msg_dir.resolve()))
+    results.sort(key=lambda item: (item[0], str(item[2])))
     return results
 
 

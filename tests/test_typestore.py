@@ -2,15 +2,18 @@ import json
 from pathlib import Path
 from typing import Dict
 
+import pytest
+
 from autoware_rosbags_converter.msg_definition_generator import MsgDefinitionGenerator
 from autoware_rosbags_converter.typestore import (
     collect_messages,
     install_in_typestore,
     load_manifest,
+    validate_manifest,
 )
 
 
-def prepare_generated_package(tmp_path: Path) -> tuple[Path, Path]:
+def prepare_generated_package(tmp_path: Path, message_body: str | None = None) -> tuple[Path, Path]:
     source_root = tmp_path / "src"
     output_root = tmp_path / "out"
     pkg_root = source_root / "example_msgs"
@@ -21,17 +24,14 @@ def prepare_generated_package(tmp_path: Path) -> tuple[Path, Path]:
     )
     msg_dir = pkg_root / "msg"
     msg_dir.mkdir(parents=True, exist_ok=True)
-    (msg_dir / "Example.msg").write_text(
-        """
-        uint8 FLAG = 1
-        string name
-        """.strip()
-        + "\n",
-        encoding="utf-8",
-    )
+    body = message_body or """
+    uint8 FLAG = 1
+    string name
+    """
+    (msg_dir / "Example.msg").write_text(body.strip() + "\n", encoding="utf-8")
 
     generator = MsgDefinitionGenerator(output_root=output_root)
-    results = generator.generate_from_msg_dir("example_msgs", msg_dir)
+    results = generator.generate_from_msg_dir("example_msgs", pkg_root, msg_dir)
     manifest = {
         artifact.ros_type: artifact.output_path.relative_to(output_root).as_posix()
         for artifact in results
@@ -58,10 +58,10 @@ def test_install_with_custom_register(tmp_path):
 
     class FakeTypestore:
         def __init__(self) -> None:
-            self.registered: Dict[str, object] = {}
+            self.types: Dict[str, object] = {}
 
         def register(self, defs: Dict[str, object]) -> None:
-            self.registered.update(defs)
+            self.types.update(defs)
 
     fake = FakeTypestore()
 
@@ -72,5 +72,31 @@ def test_install_with_custom_register(tmp_path):
         types_factory=lambda definition, full_name: {full_name: definition},
     )
 
-    assert result == fake.registered
-    assert "example_msgs/msg/Example" in fake.registered
+    assert result == fake.types
+    assert "example_msgs/msg/Example" in fake.types
+
+
+def test_validate_manifest_missing_dependency(tmp_path):
+    manifest_path, output_root = prepare_generated_package(
+        tmp_path,
+        message_body="geometry_msgs/Point point\n",
+    )
+
+    class FakeTypestore:
+        def __init__(self) -> None:
+            self.types: Dict[str, object] = {}
+
+        def register(self, defs: Dict[str, object]) -> None:
+            self.types.update(defs)
+
+    fake = FakeTypestore()
+
+    with pytest.raises(ValueError) as exc:
+        validate_manifest(
+            manifest_path,
+            base_path=output_root,
+            typestore=fake,
+            types_factory=lambda definition, full_name: {full_name: definition},
+        )
+
+    assert "geometry_msgs/msg/Point" in str(exc.value)

@@ -9,20 +9,36 @@ description = "Tools for conversion of Autoware MCAP/DB3 rosbags, and to generat
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "pathlib>=1.0.1",
-    "pytest>=8.4.2",
     "rosbags>=0.10.11",
+    "rich>=13.0",
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "ruff",
-    "mypy"
+    "mypy",
 ]
 
 [project.scripts]
 generate-msg-definitions = "autoware_rosbags_converter.generate_msg_definitions:main"
+convert-autoware-bag = "autoware_rosbags_converter.convert_autoware_bag:main"
+
+[tool.hatch.build]
+include = [
+  "src/autoware_rosbags_converter/*",
+]
 
 [tool.hatch.build.targets.wheel]
-package = ["src/autoware_rosbags_converter"]
+packages = ["src/autoware_rosbags_converter"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/autoware_rosbags_converter/msg_definitions" = "autoware_rosbags_converter/msg_definitions"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/autoware_rosbags_converter/**",
+  "README.md",
+  "pyproject.toml",
+]
