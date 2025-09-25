@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "autoware-rosbags-converter"
+version = "0.1.0"
+description = "Tools for conversion of Autoware MCAP/DB3 rosbags, and to generate Autoware ROS message definitions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache 2.0" }
+authors = [{ name = "Jacob Lambert", email = "jacob.lambert.2@tier4.jp" }]
+dependencies = [
+    "rosbags>=0.10.11",
+    "rich>=13.0",
+    "pyyaml>=6.0",
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: OS Independent",
+]
+urls = { "Source" = "https://github.com/jacoblambert/autoware_mcap_db3_converter" }
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
+
+[project.scripts]
+convert-autoware-bag = "autoware_rosbags_converter.convert_autoware_bag:main"
+
+[tool.hatch.build]
+include = [
+  "src/autoware_rosbags_converter/*",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/autoware_rosbags_converter"]
